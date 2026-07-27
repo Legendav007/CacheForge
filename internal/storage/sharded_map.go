@@ -156,7 +156,7 @@ func (sm *ShardedMap) Size() int {
 	return total
 }
 
-// RangeAll calls fn for every item across all shards. fn must NOT modify the map.
+// RangeAll call fn for every item across all shards. fn must NOT modify the map.
 // If fn returns false, iteration stops.
 func (sm *ShardedMap) RangeAll(fn func(key string, item *CacheItem) bool) {
 	for i := range sm.shards {

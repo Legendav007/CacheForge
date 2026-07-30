@@ -3,17 +3,19 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 // Config is the top-level configuration for CacheForge.
-// We'll expand this as the project grows.
 type Config struct {
-	Node    NodeConfig    `yaml:"node"`
-	Network NetworkConfig `yaml:"network"`
-	Cache   CacheConfig   `yaml:"cache"`
-	Logging LoggingConfig `yaml:"logging"`
+	Node        NodeConfig        `yaml:"node"`
+	Network     NetworkConfig     `yaml:"network"`
+	Cache       CacheConfig       `yaml:"cache"`
+	Persistence PersistenceConfig `yaml:"persistence"`
+	Logging     LoggingConfig     `yaml:"logging"`
+	Stores      []StoreConfig     `yaml:"stores"`
 }
 
 // NodeConfig contains node-specific settings.
@@ -30,14 +32,58 @@ type NetworkConfig struct {
 
 // CacheConfig contains global cache settings.
 type CacheConfig struct {
-	MaxMemory  string `yaml:"max_memory"`
-	DefaultTTL string `yaml:"default_ttl"`
+	MaxMemory       string  `yaml:"max_memory"`
+	DefaultTTL      string  `yaml:"default_ttl"`
+	CuckooFilterFPP float64 `yaml:"cuckoo_filter_fpp"`
+	MaxStores       int     `yaml:"max_stores"`
+}
+
+// PersistenceConfig defines persistence behavior.
+type PersistenceConfig struct {
+	Enabled          bool          `yaml:"enabled"`
+	Strategy         string        `yaml:"strategy"` // "aof", "snapshot", "hybrid"
+	EnableAOF        bool          `yaml:"enable_aof"`
+	SyncPolicy       string        `yaml:"sync_policy"` // "always", "everysec", "no"
+	SyncInterval     time.Duration `yaml:"sync_interval"`
+	SnapshotInterval time.Duration `yaml:"snapshot_interval"`
+	MaxLogSize       string        `yaml:"max_log_size"`
+	CompressionLevel int           `yaml:"compression_level"` // 0-9
+	RetainLogs       int           `yaml:"retain_logs"`
 }
 
 // LoggingConfig contains logging settings.
 type LoggingConfig struct {
 	Level  string `yaml:"level"`
 	LogDir string `yaml:"log_dir"`
+}
+
+// StoreConfig represents configuration for individual stores.
+// Store config is immutable after creation — to change, drop and recreate the store.
+type StoreConfig struct {
+	Name           string `yaml:"name"`
+	EvictionPolicy string `yaml:"eviction_policy"`
+	MaxMemory      string `yaml:"max_memory"`
+	DefaultTTL     string `yaml:"default_ttl"`
+	CuckooFilter   *bool  `yaml:"cuckoo_filter,omitempty"` // nil = inherit global (true)
+	Persistence    string `yaml:"persistence,omitempty"`   // "hybrid", "aof", "snapshot", "disabled"; empty = inherit global
+}
+
+// IsCuckooFilterEnabled returns whether the cuckoo filter is enabled for a store.
+// If not explicitly set on the store, returns true (enabled by default).
+func (sc *StoreConfig) IsCuckooFilterEnabled() bool {
+	if sc.CuckooFilter == nil {
+		return true // enabled by default
+	}
+	return *sc.CuckooFilter
+}
+
+// GetPersistence returns the effective persistence strategy for a store.
+// If not set on the store, returns the provided global default.
+func (sc *StoreConfig) GetPersistence(globalStrategy string) string {
+	if sc.Persistence == "" {
+		return globalStrategy
+	}
+	return sc.Persistence
 }
 
 // Load reads and parses the configuration file, falling back to defaults
@@ -77,12 +123,33 @@ func Default() *Config {
 			Port:     8080,
 		},
 		Cache: CacheConfig{
-			MaxMemory:  "8GB",
-			DefaultTTL: "0",
+			MaxMemory:       "8GB",
+			DefaultTTL:      "0",
+			CuckooFilterFPP: 0.01, // 1% false positive rate
+			MaxStores:       16,
+		},
+		Persistence: PersistenceConfig{
+			Enabled:          true,
+			Strategy:         "hybrid",
+			EnableAOF:        true,
+			SyncPolicy:       "everysec",
+			SyncInterval:     1 * time.Second,
+			SnapshotInterval: 15 * time.Minute,
+			MaxLogSize:       "100MB",
+			CompressionLevel: 6,
+			RetainLogs:       3,
 		},
 		Logging: LoggingConfig{
 			Level:  "info",
 			LogDir: "logs",
+		},
+		Stores: []StoreConfig{
+			{
+				Name:           "default",
+				EvictionPolicy: "lru",
+				MaxMemory:      "8GB",
+				DefaultTTL:     "0",
+			},
 		},
 	}
 }

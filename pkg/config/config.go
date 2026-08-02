@@ -116,7 +116,7 @@ func Default() *Config {
 	return &Config{
 		Node: NodeConfig{
 			ID:      "cacheforge-node-1",
-			DataDir: "/tmp/cacheforge",
+			DataDir: "/tmp/cacheforge-data",
 		},
 		Network: NetworkConfig{
 			BindAddr: "0.0.0.0",

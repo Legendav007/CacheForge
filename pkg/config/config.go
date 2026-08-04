@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Node        NodeConfig        `yaml:"node"`
 	Network     NetworkConfig     `yaml:"network"`
+	Cluster     ClusterConfig     `yaml:"cluster"`
 	Cache       CacheConfig       `yaml:"cache"`
 	Persistence PersistenceConfig `yaml:"persistence"`
 	Logging     LoggingConfig     `yaml:"logging"`
@@ -28,6 +29,15 @@ type NodeConfig struct {
 type NetworkConfig struct {
 	BindAddr string `yaml:"bind_addr"`
 	Port     int    `yaml:"port"`
+}
+
+// ClusterConfig contains clustering configuration.
+type ClusterConfig struct {
+	Seeds             []string `yaml:"seeds"`         // Seed nodes for joining cluster (IP:port or DNS hostname)
+	SeedDNS           string   `yaml:"seed_dns"`      // DNS hostname for seed discovery (e.g. headless K8s Service)
+	SeedDNSPort       int      `yaml:"seed_dns_port"` // Port to use with DNS-discovered seeds (default: gossip port)
+	ReplicationFactor int      `yaml:"replication_factor"`
+	ConsistencyLevel  string   `yaml:"consistency_level"`
 }
 
 // CacheConfig contains global cache settings.
@@ -121,6 +131,11 @@ func Default() *Config {
 		Network: NetworkConfig{
 			BindAddr: "0.0.0.0",
 			Port:     8080,
+		},
+		Cluster: ClusterConfig{
+			Seeds:             []string{},
+			ReplicationFactor: 3,
+			ConsistencyLevel:  "eventual",
 		},
 		Cache: CacheConfig{
 			MaxMemory:       "8GB",

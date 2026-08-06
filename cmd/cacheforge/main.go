@@ -17,6 +17,7 @@ import (
 	"cacheforge/internal/cluster"
 	"cacheforge/internal/logging"
 	"cacheforge/internal/metrics"
+	"cacheforge/internal/network"
 	"cacheforge/internal/storage"
 	"cacheforge/pkg/config"
 )
@@ -131,6 +132,21 @@ func main() {
 
 	// Create node communicator for hash-ring routing & replication
 	nodeCommunicator := cluster.NewNodeCommunicator(cfg.Node.ID, coord.GetMembership())
+
+	// Create distributed-aware RESP server using configured address
+	respBindAddr := fmt.Sprintf("%s:%d", cfg.Network.BindAddr, cfg.Network.Port+1000)
+	respServer := network.NewServer(respBindAddr, defaultStore, coord)
+	respServer.SetStoreManager(storeManager)
+	respServer.SetNodeCommunicator(nodeCommunicator)
+	respServer.SetConsistencyLevel(cfg.Cluster.ConsistencyLevel)
+
+	// Start RESP server
+	go func() {
+		logging.Info(ctx, logging.ComponentRESP, logging.ActionStart, "RESP server listening", map[string]interface{}{"bind_addr": respBindAddr})
+		if err := respServer.Start(); err != nil {
+			logging.Error(ctx, logging.ComponentRESP, logging.ActionStart, "RESP server error", err, nil)
+		}
+	}()
 
 	// Build HTTP mux with cache + metrics + cluster endpoints
 	mux := http.NewServeMux()

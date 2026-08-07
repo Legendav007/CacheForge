@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'cacheforge'
+    scrape_interval: 5s
+    static_configs:
+      # Single-node development
+      - targets: ['host.docker.internal:8080']
+        labels:
+          cluster: 'cacheforge-dev'
+
+      # 3-node cluster (uncomment for cluster mode)
+      # - targets:
+      #     - 'cacheforge-node-1:8080'
+      #     - 'cacheforge-node-2:8081'
+      #     - 'cacheforge-node-3:8082'
+      #   labels:
+      #     cluster: 'cacheforge-cluster'
+    metrics_path: '/metrics'

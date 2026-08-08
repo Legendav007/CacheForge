@@ -1,0 +1,57 @@
+{
+  "editable": true,
+  "panels": [
+    {
+      "title": "HTTP Requests Over Time",
+      "type": "timeseries",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "targets": [{ "query": "container.name:cacheforge-node* AND message:\"HTTP request started\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "10s" } }], "timeField": "@timestamp" }]
+    },
+    {
+      "title": "Cuckoo Filter Activity",
+      "type": "timeseries",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "refId": "A", "query": "container.name:cacheforge-node* AND message:\"added to cuckoo filter\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "Filter Add" },
+        { "refId": "B", "query": "container.name:cacheforge-node* AND message:\"Cuckoo filter early rejection\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "Filter Reject" }
+      ]
+    },
+    {
+      "title": "Gossip / Cluster Events",
+      "type": "timeseries",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "refId": "A", "query": "container.name:cacheforge-node* AND message:\"Node joined\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "Node Join" },
+        { "refId": "B", "query": "container.name:cacheforge-node* AND message:\"Node left\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "Node Left" },
+        { "refId": "C", "query": "container.name:cacheforge-node* AND message:\"Node failed\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "Node Failed" }
+      ]
+    },
+    {
+      "title": "Persistence Activity",
+      "type": "timeseries",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "refId": "A", "query": "container.name:cacheforge-node* AND message:\"AOF replay\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "AOF" },
+        { "refId": "B", "query": "container.name:cacheforge-node* AND message:\"Snapshot created\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "Snapshot" }
+      ]
+    },
+    {
+      "title": "Errors & Warnings",
+      "type": "logs",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [{ "query": "container.name:cacheforge-node* AND (message:\"level\\\":\\\"ERROR\" OR message:\"level\\\":\\\"WARN\")", "metrics": [{ "type": "logs", "id": "1" }], "timeField": "@timestamp" }],
+      "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true, "sortOrder": "Descending" }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["cacheforge"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "CacheForge System Components",
+  "uid": "cacheforge-system-v1"
+}

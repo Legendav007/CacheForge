@@ -1,0 +1,85 @@
+{
+  "editable": true,
+  "panels": [
+    {
+      "title": "Total Logs",
+      "type": "stat",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "query": "container.name:cacheforge-node*", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "auto" } }], "timeField": "@timestamp" }],
+      "options": { "reduceOptions": { "calcs": ["sum"] } },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }] } } }
+    },
+    {
+      "title": "Errors",
+      "type": "stat",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "query": "container.name:cacheforge-node* AND message:\"level\\\":\\\"ERROR\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "auto" } }], "timeField": "@timestamp" }],
+      "options": { "reduceOptions": { "calcs": ["sum"] } },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } }
+    },
+    {
+      "title": "Cache Ops",
+      "type": "stat",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "query": "container.name:cacheforge-node* AND (message:\"Cache SET operation\" OR message:\"Cache GET operation\" OR message:\"Cache DELETE operation\")", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "auto" } }], "timeField": "@timestamp" }],
+      "options": { "reduceOptions": { "calcs": ["sum"] } },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "blue", "value": null }] } } }
+    },
+    {
+      "title": "Replications",
+      "type": "stat",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "query": "container.name:cacheforge-node* AND message:\"replication\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "auto" } }], "timeField": "@timestamp" }],
+      "options": { "reduceOptions": { "calcs": ["sum"] } },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "purple", "value": null }] } } }
+    },
+    {
+      "title": "Log Volume Over Time",
+      "type": "timeseries",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
+      "targets": [{ "query": "container.name:cacheforge-node*", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "10s" } }], "timeField": "@timestamp" }]
+    },
+    {
+      "title": "Logs by Node",
+      "type": "piechart",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 13 },
+      "targets": [
+        { "refId": "A", "query": "container.name:cacheforge-node1", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "auto" } }], "timeField": "@timestamp", "alias": "Node 1" },
+        { "refId": "B", "query": "container.name:cacheforge-node2", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "auto" } }], "timeField": "@timestamp", "alias": "Node 2" },
+        { "refId": "C", "query": "container.name:cacheforge-node3", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "auto" } }], "timeField": "@timestamp", "alias": "Node 3" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "legend": { "displayMode": "list", "placement": "bottom" } }
+    },
+    {
+      "title": "Operations Over Time",
+      "type": "timeseries",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 13 },
+      "targets": [
+        { "refId": "A", "query": "container.name:cacheforge-node* AND message:\"Cache PUT operation started\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "SET" },
+        { "refId": "B", "query": "container.name:cacheforge-node* AND message:\"Cache GET operation started\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "GET" },
+        { "refId": "C", "query": "container.name:cacheforge-node* AND message:\"Cache DELETE operation started\"", "metrics": [{ "type": "count", "id": "1" }], "bucketAggs": [{ "type": "date_histogram", "field": "@timestamp", "id": "2", "settings": { "interval": "30s" } }], "timeField": "@timestamp", "alias": "DELETE" }
+      ]
+    },
+    {
+      "title": "Recent Logs",
+      "type": "logs",
+      "datasource": "CacheForge Logs",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 21 },
+      "targets": [{ "query": "container.name:cacheforge-node*", "metrics": [{ "type": "logs", "id": "1" }], "timeField": "@timestamp" }],
+      "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true, "sortOrder": "Descending" }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["cacheforge"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "CacheForge Health Dashboard",
+  "uid": "cacheforge-health-v1"
+}

@@ -1,0 +1,49 @@
+# CacheForge Node Configuration Template
+# This template is used to generate individual node configurations
+
+node:
+  id: "${NODE_ID}"
+  data_dir: "/tmp/cacheforge/${NODE_ID}"
+
+network:
+  resp_bind_addr: "0.0.0.0"
+  resp_port: ${RESP_PORT}
+  http_bind_addr: "0.0.0.0"
+  http_port: ${HTTP_PORT}
+  advertise_addr: "127.0.0.1"
+  gossip_port: ${GOSSIP_PORT}
+
+cluster:
+  seeds: [${CLUSTER_SEEDS}]
+  replication_factor: 3
+  consistency_level: "eventual"
+
+persistence:
+  enabled: true
+  strategy: "hybrid"
+  enable_aof: true
+  sync_policy: "everysec"
+  sync_interval: "1s"
+  snapshot_interval: "15m"
+  max_log_size: "100MB"
+  compression_level: 6
+  retain_logs: 3
+
+cache:
+  max_memory: "8GB"
+  default_ttl: "0"
+  cuckoo_filter_fpp: 0.01
+  max_stores: 16
+
+storage:
+  wal_sync_interval: "10ms"
+  memtable_size: "64MB"
+  compaction_threads: 4
+
+stores:
+  - name: "default"
+    eviction_policy: "lru"
+    max_memory: "8GB"
+    default_ttl: "0"
+    cuckoo_filter: true
+    persistence: "hybrid"

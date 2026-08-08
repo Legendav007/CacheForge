@@ -1,0 +1,219 @@
+services:
+  # Initialize volumes and extract configs from CacheForge image
+  volume-init:
+    image: cacheforge:latest
+    user: root
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        mkdir -p /app/logs /shared/configs /shared/filebeat /shared/grafana &&
+        cp /app/configs/docker/* /shared/configs/ 2>/dev/null || true &&
+        cp /app/filebeat-docker.yml /shared/filebeat/filebeat.yml 2>/dev/null || true &&
+        cp -r /app/grafana/provisioning/* /shared/grafana/ 2>/dev/null || true &&
+        sed -i 's|/etc/grafana/provisioning/dashboards|/shared/grafana/dashboards|' /shared/grafana/dashboards/dashboard.yml 2>/dev/null || true &&
+        chown -R 1000:1000 /app/logs &&
+        chmod -R 755 /app/logs &&
+        echo 'Volumes initialized and configs extracted'
+    volumes:
+      - cacheforge_logs:/app/logs
+      - shared_configs:/shared
+    restart: "no"
+
+  # CacheForge Node 1 (Bootstrap node)
+  cacheforge-node1:
+    image: cacheforge:latest
+    container_name: cacheforge-node1
+    hostname: cacheforge-node1
+    user: "1000:1000"
+    command: ["--config", "/shared/configs/node1-config.yaml", "--protocol", "resp"]
+    environment:
+      - NODE_ID=node-1
+      - CLUSTER_SEEDS=cacheforge-node1:7946,cacheforge-node2:7946,cacheforge-node3:7946
+      - DATA_DIR=/data
+      - LOG_LEVEL=info
+    volumes:
+      - shared_configs:/shared:ro
+      - cacheforge_node1_data:/data
+      - cacheforge_logs:/app/logs
+    ports:
+      - "8080:8080"  # RESP Protocol
+      - "9080:9080"  # HTTP API
+      - "7946:7946"  # Gossip Protocol
+    networks:
+      cacheforge-cluster:
+        ipv4_address: 172.20.0.10
+      logging:
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # CacheForge Node 2
+  cacheforge-node2:
+    image: cacheforge:latest
+    container_name: cacheforge-node2
+    hostname: cacheforge-node2
+    user: "1000:1000"
+    command: ["--config", "/shared/configs/node2-config.yaml", "--protocol", "resp"]
+    environment:
+      - NODE_ID=node-2
+      - CLUSTER_SEEDS=cacheforge-node1:7946,cacheforge-node2:7946,cacheforge-node3:7946
+      - DATA_DIR=/data
+      - LOG_LEVEL=info
+    volumes:
+      - shared_configs:/shared:ro
+      - cacheforge_node2_data:/data
+      - cacheforge_logs:/app/logs
+    ports:
+      - "8081:8080"  # RESP Protocol
+      - "9081:9080"  # HTTP API
+      - "7947:7946"  # Gossip Protocol
+    networks:
+      cacheforge-cluster:
+        ipv4_address: 172.20.0.11
+      logging:
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+      cacheforge-node1:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # CacheForge Node 3
+  cacheforge-node3:
+    image: cacheforge:latest
+    container_name: cacheforge-node3
+    hostname: cacheforge-node3
+    user: "1000:1000"
+    command: ["--config", "/shared/configs/node3-config.yaml", "--protocol", "resp"]
+    environment:
+      - NODE_ID=node-3
+      - CLUSTER_SEEDS=cacheforge-node1:7946,cacheforge-node2:7946,cacheforge-node3:7946
+      - DATA_DIR=/data
+      - LOG_LEVEL=info
+    volumes:
+      - shared_configs:/shared:ro
+      - cacheforge_node3_data:/data
+      - cacheforge_logs:/app/logs
+    ports:
+      - "8082:8080"  # RESP Protocol
+      - "9082:9080"  # HTTP API
+      - "7948:7946"  # Gossip Protocol
+    networks:
+      cacheforge-cluster:
+        ipv4_address: 172.20.0.12
+      logging:
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+      cacheforge-node1:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # Include existing logging infrastructure
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: cacheforge-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - logging
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: cacheforge-filebeat
+    user: root
+    volumes:
+      - shared_configs:/shared:ro
+      - cacheforge_logs:/var/log/cacheforge:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: ["filebeat", "-e", "-c", "/shared/filebeat/filebeat.yml"]
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - logging
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: cacheforge-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_PATHS_PROVISIONING=/shared/grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - shared_configs:/shared
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - logging
+    restart: unless-stopped
+
+volumes:
+  cacheforge_node1_data:
+  cacheforge_node2_data:
+  cacheforge_node3_data:
+  cacheforge_logs:
+  shared_configs:
+  elasticsearch_data:
+  grafana_data:
+
+networks:
+  cacheforge-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  logging:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
